@@ -17,31 +17,39 @@ jobs:
 
       - name: Build (unsigned, device)
         run: |
+          set -e
+          mkdir -p "$PWD/build/Release-iphoneos"
           xcodebuild -project LiDARScan3MF.xcodeproj \
             -target LiDARScan3MF \
             -configuration Release \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
-            -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" CODE_SIGN_ENTITLEMENTS=""
+            CONFIGURATION_BUILD_DIR="$PWD/build/Release-iphoneos" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS="" \
+            GCC_GENERATE_DEBUGGING_SYMBOLS=NO
 
       - name: Find built .app
         run: |
-          find build/Build/Products -name "*.app" -maxdepth 3
-          ls -la build/Build/Products/Release-iphoneos/ || true
+          echo "--- build dir ---"
+          ls -la "$PWD/build/Release-iphoneos" || true
+          echo "--- search .app ---"
+          find "$PWD/build" -maxdepth 3 -name "*.app" || true
 
       - name: Package .tipa
         run: |
           set -e
-          APP=$(find build/Build/Products -name "LiDARScan3MF.app" -maxdepth 3 | head -n 1)
+          APP=$(find "$PWD/build" -maxdepth 3 -name "LiDARScan3MF.app" | head -n 1)
           echo "Found app: $APP"
           test -n "$APP"
+          test -d "$APP"
           mkdir -p Payload
           cp -r "$APP" Payload/
           zip -qry LiDARScan3MF.tipa Payload
           ls -lh LiDARScan3MF.tipa
-          echo "---- 内部结构 ----"
-          unzip -l LiDARScan3MF.tipa | head -n 20
+          echo "---- tipa 内部结构 ----"
+          unzip -l LiDARScan3MF.tipa | head -n 15
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
