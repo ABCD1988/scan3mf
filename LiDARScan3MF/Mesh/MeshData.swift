@@ -84,7 +84,7 @@ struct MeshData {
     // MARK: - ModelIO 桥接（USDZ 导出 / SceneKit 预览）
 
     /// 生成 MDLMesh（设备坐标系为右手 Y-up，米）
-    func mdlMesh(device: MTLDevice? = nil, name: String = "ScanMesh") -> MDLMesh? {
+    func toMDLMesh(device: MTLDevice? = nil, name: String = "ScanMesh") -> MDLMesh? {
         guard !isEmpty, let device = device ?? MTLCreateSystemDefaultDevice() else { return nil }
 
         let allocator = MTKMeshBufferAllocator(device: device)

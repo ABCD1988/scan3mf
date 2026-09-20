@@ -46,7 +46,7 @@ extension SCNScene {
         let node = SCNNode()
 
         guard let device = MTLCreateSystemDefaultDevice(),
-              let mdl = centered.mdlMesh(device: device) else { return node }
+              let mdl = centered.toMDLMesh(device: device) else { return node }
 
         let geometry = SCNGeometry(mdlMesh: mdl)
         let material = SCNMaterial()

@@ -12,7 +12,7 @@ enum USDZExporter {
 
         // 缩放 + 居中，避免模型离原点过远
         let m = mesh.scaled(by: scale).centered()
-        guard let mdlMesh = m.mdlMesh(device: device, name: "ScanMesh") else { return false }
+        guard let mdlMesh = m.toMDLMesh(device: device, name: "ScanMesh") else { return false }
 
         let asset = MDLAsset()
         asset.add(mdlMesh)
