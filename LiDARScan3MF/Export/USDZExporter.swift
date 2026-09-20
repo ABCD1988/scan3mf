@@ -3,7 +3,7 @@ import SceneKit
 import ModelIO
 import Metal
 
-/// USDZ 导出：MeshData → MDLMesh → SCNScene → .usdz
+/// USDZ 导出：MeshData → MDLMesh → MDLAsset.export → .usdz
 enum USDZExporter {
 
     @discardableResult
@@ -17,19 +17,14 @@ enum USDZExporter {
         let asset = MDLAsset()
         asset.add(mdlMesh)
 
-        let scene = SCNScene(mdlAsset: asset)
-
-        // 给一个中性材质，避免预览纯白/纯黑
-        let material = SCNMaterial()
-        material.lightingModel = .physicallyBased
-        material.diffuse.contents = UIColor(red: 0.78, green: 0.82, blue: 0.86, alpha: 1.0)
-        material.roughness.contents = 0.6
-        material.metalness.contents = 0.0
-        scene.rootNode.childNodes.forEach { node in
-            node.geometry?.materials = [material]
+        // 注意：不使用 SCNScene(mdlAsset:) —— 该 ModelIO 桥接构造器 iOS 上不可用。
+        // MDLAsset.export(to:) 会依据扩展名导出 usdz。
+        do {
+            try asset.export(to: url)
+            return FileManager.default.fileExists(atPath: url.path)
+        } catch {
+            NSLog("USDZ export failed: \(error.localizedDescription)")
+            return false
         }
-
-        // write(to:) 会按 url 扩展名推断 usdz 格式，避免多 nil 参数的类型歧义
-        return scene.write(to: url)
     }
 }

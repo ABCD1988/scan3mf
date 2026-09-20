@@ -41,14 +41,28 @@ struct MeshPreviewView: UIViewRepresentable {
 
 extension SCNScene {
     /// 把 MeshData 转成 SceneKit 节点（先居中再显示）
+    ///
+    /// 注意：不走 SCNGeometry(mdlMesh:) —— 那个 ModelIO 桥接构造器 iOS 上不可用。
+    /// 这里直接手写顶点源 + 索引元素。
     static func loadMesh(_ mesh: MeshData, wireframe: Bool) -> SCNNode {
         let centered = mesh.centered()
         let node = SCNNode()
 
-        guard let device = MTLCreateSystemDefaultDevice(),
-              let mdl = centered.toMDLMesh(device: device) else { return node }
+        guard centered.vertexCount > 0, centered.faceCount > 0 else { return node }
 
-        let geometry = SCNGeometry(mdlMesh: mdl)
+        // 顶点源
+        let points = centered.vertices.map { SCNVector3(Float($0.x), Float($0.y), Float($0.z)) }
+        let source = SCNGeometrySource(vertices: points)
+
+        // 索引元素（每 index 4 字节）
+        let indexData = centered.indices.withUnsafeBufferPointer { buf in Data(buffer: buf) }
+        let element = SCNGeometryElement(data: indexData,
+                                         primitiveType: .triangles,
+                                         primitiveCount: centered.faceCount,
+                                         bytesPerIndex: 4)
+
+        let geometry = SCNGeometry(sources: [source], elements: [element])
+
         let material = SCNMaterial()
         material.lightingModel = .physicallyBased
         material.diffuse.contents = UIColor(red: 0.21, green: 0.89, blue: 0.76, alpha: 1.0)
