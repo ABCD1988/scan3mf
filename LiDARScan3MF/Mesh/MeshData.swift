@@ -93,12 +93,13 @@ struct MeshData {
         let vCount = vertices.count
         let vStride = MemoryLayout<SIMD3<Float>>.stride
         let vData = vertices.withUnsafeBufferPointer { buf in Data(buffer: buf) }
-        guard let vBuffer = allocator.newBuffer(with: vData, type: .vertex) else { return nil }
+        // 注意：新版 ModelIO 的 newBuffer 返回非 Optional 的 `any MDLMeshBuffer`，不能用 guard let
+        let vBuffer = allocator.newBuffer(with: vData, type: .vertex)
 
         // 索引缓冲
         let iCount = indices.count
         let iData = indices.withUnsafeBufferPointer { buf in Data(buffer: buf) }
-        guard let iBuffer = allocator.newBuffer(with: iData, type: .index) else { return nil }
+        let iBuffer = allocator.newBuffer(with: iData, type: .index)
 
         // 顶点描述符：position only
         let vd = MDLVertexDescriptor()
