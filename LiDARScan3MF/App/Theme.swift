@@ -30,6 +30,12 @@ extension Float {
     var fixed2: String { String(format: "%.2f", self) }
 }
 
+extension Double {
+    var fixed0: String { String(format: "%.0f", self) }
+    var fixed1: String { String(format: "%.1f", self) }
+    var fixed2: String { String(format: "%.2f", self) }
+}
+
 extension Int {
     var grouped: String {
         let nf = NumberFormatter()

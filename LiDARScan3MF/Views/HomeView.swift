@@ -220,7 +220,3 @@ private extension View {
         }
     }
 }
-
-extension Double {
-    var fixed0: String { String(format: "%.0f", self) }
-}

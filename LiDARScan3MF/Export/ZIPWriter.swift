@@ -54,9 +54,15 @@ enum ZIPWriter {
         let now = Date()
         let cal = Calendar(identifier: .gregorian)
         let comps = cal.dateComponents([.year, .month, .day, .hour, .minute, .second], from: now)
-        let year = max(1980, comps.year ?? 2026) - 1980
-        let dosTime = UInt16((comps.hour ?? 0) << 11 | (comps.minute ?? 0) << 5 | ((comps.second ?? 0) / 2))
-        let dosDate = UInt16(year << 9 | (comps.month ?? 1) << 5 | (comps.day ?? 1))
+        let compYear: Int = comps.year ?? 2026
+        let compMonth: Int = comps.month ?? 1
+        let compDay: Int = comps.day ?? 1
+        let compHour: Int = comps.hour ?? 0
+        let compMinute: Int = comps.minute ?? 0
+        let compSecond: Int = comps.second ?? 0
+        let dosYear: Int = max(1980, compYear) - 1980
+        let dosTime: UInt16 = UInt16(compHour << 11 | compMinute << 5 | (compSecond / 2))
+        let dosDate: UInt16 = UInt16(dosYear << 9 | compMonth << 5 | compDay)
 
         for entry in files {
             let nameData = Data(entry.name.utf8)

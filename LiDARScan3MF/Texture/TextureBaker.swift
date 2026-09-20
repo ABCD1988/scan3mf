@@ -33,7 +33,7 @@ enum TextureBaker {
             bprC = CVPixelBufferGetBytesPerRowOfPlane(pixels, 1)
         }
 
-        guard let yPtr = baseY.assumingMemoryBound(to: UInt8.self) as UnsafePointer<UInt8>? else { return mesh }
+        let yPtr = UnsafePointer<UInt8>(baseY.assumingMemoryBound(to: UInt8.self))
 
         // 投影矩阵：世界 → NDC
         let viewport = CGSize(width: 390, height: 844)

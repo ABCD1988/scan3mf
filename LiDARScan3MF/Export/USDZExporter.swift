@@ -29,6 +29,7 @@ enum USDZExporter {
             node.geometry?.materials = [material]
         }
 
-        return scene.write(to: url, options: nil, delegate: nil, progressHandler: nil)
+        // write(to:) 会按 url 扩展名推断 usdz 格式，避免多 nil 参数的类型歧义
+        return scene.write(to: url)
     }
 }

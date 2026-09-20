@@ -89,23 +89,16 @@ struct MeshData {
 
         let allocator = MTKMeshBufferAllocator(device: device)
 
-        // 顶点缓冲
+        // 顶点缓冲（Data 构造，避免 newBuffer 重载歧义）
         let vCount = vertices.count
         let vStride = MemoryLayout<SIMD3<Float>>.stride
-        let vLength = vCount * vStride
-        guard let vBuffer = allocator.newBuffer(with: vLength, type: .vertex) else { return nil }
-        let vPtr = vBuffer.map().bytes.bindMemory(to: SIMD3<Float>.self, capacity: vCount)
-        for i in 0..<vCount { vPtr[i] = vertices[i] }
-        vBuffer.unmap()
+        let vData = vertices.withUnsafeBufferPointer { buf in Data(buffer: buf) }
+        guard let vBuffer = allocator.newBuffer(with: vData, type: .vertex) else { return nil }
 
         // 索引缓冲
         let iCount = indices.count
-        let iStride = MemoryLayout<UInt32>.stride
-        let iLength = iCount * iStride
-        guard let iBuffer = allocator.newBuffer(with: iLength, type: .index) else { return nil }
-        let iPtr = iBuffer.map().bytes.bindMemory(to: UInt32.self, capacity: iCount)
-        for i in 0..<iCount { iPtr[i] = indices[i] }
-        iBuffer.unmap()
+        let iData = indices.withUnsafeBufferPointer { buf in Data(buffer: buf) }
+        guard let iBuffer = allocator.newBuffer(with: iData, type: .index) else { return nil }
 
         // 顶点描述符：position only
         let vd = MDLVertexDescriptor()

@@ -25,7 +25,8 @@ enum MeshBuilder {
         // --- 顶点 ---
         let vSource = geometry.vertices
         let vCount = vSource.count
-        let vStride = vSource.stride
+        // ARGeometryElement 没有 stride；顶点是 3×Float32，固定 12 字节
+        let vStride = MemoryLayout<Float>.stride * 3
         let vRaw = vSource.buffer.contents()
 
         mesh.vertices.reserveCapacity(mesh.vertices.count + vCount)
@@ -40,9 +41,9 @@ enum MeshBuilder {
         // --- 索引 ---
         let fSource = geometry.faces
         let fCount = fSource.count
-        let fStride = fSource.stride
         let indexCount = fSource.indexCountPerPrimitive   // 3
         let bytesPerIndex = fSource.bytesPerIndex
+        let fStride = indexCount * bytesPerIndex
         let fRaw = fSource.buffer.contents()
 
         mesh.indices.reserveCapacity(mesh.indices.count + fCount * indexCount)
@@ -71,7 +72,7 @@ enum MeshBuilder {
             let geometry = anchor.geometry
             let vSource = geometry.vertices
             let vCount = vSource.count
-            let vStride = vSource.stride
+            let vStride = MemoryLayout<Float>.stride * 3
             let vRaw = vSource.buffer.contents()
 
             var local: [SIMD3<Float>] = []
@@ -83,9 +84,9 @@ enum MeshBuilder {
 
             let fSource = geometry.faces
             let fCount = fSource.count
-            let fStride = fSource.stride
             let indexCount = fSource.indexCountPerPrimitive
             let bytesPerIndex = fSource.bytesPerIndex
+            let fStride = indexCount * bytesPerIndex
             let fRaw = fSource.buffer.contents()
 
             for f in 0..<fCount {

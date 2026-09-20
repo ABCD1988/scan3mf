@@ -30,7 +30,6 @@ struct SectionHeader: View {
             .font(.system(size: 12, weight: .medium))
             .foregroundColor(Theme.text3)
             .textCase(.uppercase)
-            .kerning(0.6)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
