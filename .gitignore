@@ -1,0 +1,7 @@
+build/
+DerivedData/
+xcuserdata/
+*.tipa
+*.ipa
+*.app
+.DS_Store

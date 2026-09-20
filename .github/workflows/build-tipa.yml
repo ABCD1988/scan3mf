@@ -1,0 +1,51 @@
+name: Build TIPA
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build (unsigned, device)
+        run: |
+          xcodebuild -project LiDARScan3MF.xcodeproj \
+            -target LiDARScan3MF \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" CODE_SIGN_ENTITLEMENTS=""
+
+      - name: Find built .app
+        run: |
+          find build/Build/Products -name "*.app" -maxdepth 3
+          ls -la build/Build/Products/Release-iphoneos/ || true
+
+      - name: Package .tipa
+        run: |
+          set -e
+          APP=$(find build/Build/Products -name "LiDARScan3MF.app" -maxdepth 3 | head -n 1)
+          echo "Found app: $APP"
+          test -n "$APP"
+          mkdir -p Payload
+          cp -r "$APP" Payload/
+          zip -qry LiDARScan3MF.tipa Payload
+          ls -lh LiDARScan3MF.tipa
+          echo "---- 内部结构 ----"
+          unzip -l LiDARScan3MF.tipa | head -n 20
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LiDARScan3MF-tipa
+          path: LiDARScan3MF.tipa
+          if-no-files-found: error
