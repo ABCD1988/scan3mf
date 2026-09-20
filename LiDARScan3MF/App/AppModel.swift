@@ -83,7 +83,8 @@ final class AppModel: ObservableObject {
             toast = "此设备不支持 LiDAR 网格重建"
             return
         }
-        session.start()
+        // 注意：这里不能启动 ARSession —— ARView 此时还没进入视图层级，
+        // ARKit 没有渲染目标就不会采集网格。改为由 ScanView.onAppear 启动。
         screen = .scan
     }
 

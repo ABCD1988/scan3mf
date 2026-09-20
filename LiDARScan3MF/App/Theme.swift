@@ -20,6 +20,7 @@ enum Theme {
     static let text = Color(hex: 0xF2F4F7)
     static let text2 = Color(hex: 0x8E97A3)
     static let text3 = Color(hex: 0x5C6672)
+    static let warn = Color(hex: 0xFFB454)
 
     static var data: Font { .system(size: 12, weight: .regular).monospaced() }
     static var dataAccent: Font { .system(size: 12, weight: .semibold).monospaced() }

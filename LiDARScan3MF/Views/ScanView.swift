@@ -50,7 +50,13 @@ struct ScanView: View {
             }
         }
         .onAppear {
-            if !session.isRunning { session.start() }
+            // ARView 此时已加入视图层级，ARSession 才能正常采集 LiDAR 网格
+            if !app.session.isRunning {
+                app.session.start()
+            }
+        }
+        .onDisappear {
+            app.session.stop()
         }
     }
 
@@ -76,24 +82,37 @@ struct ScanView: View {
 
                 Spacer()
 
-                Text("\(session.meshAnchorCount) 网格块")
+                Text("\(session.meshAnchorCount) 块 · \(session.meshVertexCount.grouped) 顶点")
                     .font(Theme.data)
-                    .foregroundColor(Theme.text2)
+                    .foregroundColor(session.meshAnchorCount > 0 ? Theme.accent : Theme.text2)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(Color.black.opacity(0.5))
                     .clipShape(Capsule())
             }
 
-            // 引导胶囊
-            Text(hints[hintIndex % hints.count])
-                .font(.system(size: 12))
-                .foregroundColor(Theme.text2)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(Color.black.opacity(0.5))
-                .clipShape(Capsule())
-                .onTapGesture { hintIndex += 1 }
+            // 引导胶囊 / 零网格自检提示
+            if session.noMeshWarning {
+                Text(session.usingLiDAR
+                     ? "还没采到网格：请缓慢平移手机，避免纯白或纯黑表面"
+                     : "此设备不支持 LiDAR 网格重建，无法生成扫描网格")
+                    .font(.system(size: 12))
+                    .foregroundColor(Theme.warn)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(Color.black.opacity(0.5))
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(Theme.warn.opacity(0.45), lineWidth: 1))
+            } else {
+                Text(hints[hintIndex % hints.count])
+                    .font(.system(size: 12))
+                    .foregroundColor(Theme.text2)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(Color.black.opacity(0.5))
+                    .clipShape(Capsule())
+                    .onTapGesture { hintIndex += 1 }
+            }
         }
         .padding(.horizontal, 20)
         .padding(.top, 10)
