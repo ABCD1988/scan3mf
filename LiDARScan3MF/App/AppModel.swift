@@ -63,6 +63,8 @@ struct ScanSettings {
 final class AppModel: ObservableObject {
     @Published var screen: Screen = .home
     @Published var settings = ScanSettings()
+    /// 当前扫描模式（物体 / 空间）
+    @Published var mode: ScanMode = .object
     @Published var mesh: MeshData?
     @Published var holeCount = 0
     @Published var isWatertight = false
@@ -79,10 +81,23 @@ final class AppModel: ObservableObject {
     // MARK: - 扫描流程
 
     func startScan() {
+        startScan(mode: mode)
+    }
+
+    /// 切换扫描模式（同时把细部化参数刷成该模式的默认值，用户仍可再改）
+    func selectMode(_ m: ScanMode) {
+        mode = m
+        settings.targetFaces = m.defaultTargetFaces
+        settings.smoothing = m.defaultSmoothing
+    }
+
+    func startScan(mode: ScanMode) {
         guard lidarAvailable else {
             toast = "此设备不支持 LiDAR 网格重建"
             return
         }
+        selectMode(mode)
+        session.mode = mode
         // 注意：这里不能启动 ARSession —— ARView 此时还没进入视图层级，
         // ARKit 没有渲染目标就不会采集网格。改为由 ScanView.onAppear 启动。
         screen = .scan
@@ -95,15 +110,18 @@ final class AppModel: ObservableObject {
 
     func finishScan() {
         let raw = session.finalizeMesh() ?? MeshData()
+        let frames = session.colorFrames
         session.stop()
         guard raw.faceCount > 0 else {
             toast = "未捕获到网格，请重新扫描"
             screen = .home
             return
         }
-        let result = MeshProcessor.applyAutoFix(raw, settings: settings)
-        mesh = result.mesh
-        refreshStats(result.mesh)
+        // 先修复拓扑，再上色 —— 简化会重建顶点，颜色必须在之后写
+        var result = MeshProcessor.applyAutoFix(raw, settings: settings).mesh
+        result = TextureBaker.bake(result, frames: frames)
+        mesh = result
+        refreshStats(result)
         screen = .edit
     }
 
@@ -153,7 +171,10 @@ final class AppModel: ObservableObject {
     // MARK: - 导出
 
     @discardableResult
-    func exportMesh(format: ExportFormat, scale: ExportScale, unit: ExportUnit) -> URL? {
+    func exportMesh(format: ExportFormat,
+                    scale: ExportScale,
+                    unit: ExportUnit,
+                    style: ExportStyle = .textured) -> URL? {
         guard let m = mesh, m.faceCount > 0 else {
             toast = "没有可导出的模型"
             return nil
@@ -166,11 +187,11 @@ final class AppModel: ObservableObject {
         let ok: Bool
         switch format {
         case .threeMF:
-            ok = ThreeMFWriter.write(mesh: m, unit: unit, scale: scale.factor, to: url)
+            ok = ThreeMFWriter.write(mesh: m, unit: unit, scale: scale.factor, style: style, to: url)
         case .stl:
             ok = STLWriter.write(m, scale: scale.factor, to: url)
         case .obj:
-            ok = OBJWriter.write(m, scale: scale.factor, to: url)
+            ok = OBJWriter.write(m, scale: scale.factor, style: style, to: url)
         case .usdz:
             ok = USDZExporter.write(m, scale: scale.factor, to: url)
         }

@@ -76,18 +76,39 @@ enum OBJWriter {
 
     @discardableResult
     static func write(_ mesh: MeshData, scale: Float, to url: URL) -> Bool {
+        write(mesh, scale: scale, style: .textured, to: url)
+    }
+
+    @discardableResult
+    static func write(_ mesh: MeshData, scale: Float, style: ExportStyle, to url: URL) -> Bool {
         guard !mesh.isEmpty else { return false }
 
         let factor = scale * 1000
         var text = "# LiDARScan3MF export\n"
+        text += "# author: \(AppInfo.author)\n"
+        text += "# style: \(style.rawValue)\n"
         text += "# vertices: \(mesh.vertexCount)  faces: \(mesh.faceCount)\n"
-        text.reserveCapacity(mesh.vertexCount * 40)
+        text.reserveCapacity(mesh.vertexCount * 56)
 
-        for v in mesh.vertices {
+        // v x y z [r g b] —— OBJ 顶点色扩展，Blender / MeshLab / Windows 3D 查看器都认
+        let colors = (style.needsVertexColor ? mesh.vertexColors : nil)
+        let fixed: SIMD3<UInt8>? = (style == .accent) ? SIMD3<UInt8>(0x35, 0xE2, 0xC2) : nil
+
+        for i in 0..<mesh.vertexCount {
+            let v = mesh.vertices[i]
             let x = v.x * factor
             let y = -v.z * factor
             let z = v.y * factor
-            text += "v \(String(format: "%.4f", x)) \(String(format: "%.4f", y)) \(String(format: "%.4f", z))\n"
+            text += "v \(String(format: "%.4f", x)) \(String(format: "%.4f", y)) \(String(format: "%.4f", z))"
+            if let cs = colors, i < cs.count {
+                let c = cs[i]
+                text += String(format: " %.4f %.4f %.4f",
+                               Float(c.x) / 255, Float(c.y) / 255, Float(c.z) / 255)
+            } else if let f = fixed {
+                text += String(format: " %.4f %.4f %.4f",
+                               Float(f.x) / 255, Float(f.y) / 255, Float(f.z) / 255)
+            }
+            text += "\n"
         }
 
         var i = 0

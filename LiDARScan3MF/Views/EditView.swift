@@ -2,11 +2,12 @@ import SwiftUI
 import SceneKit
 import Metal
 import ModelIO
+import simd
 
-/// SceneKit 网格预览（线框）
+/// SceneKit 网格预览：真实色彩实体 / 素模 / 线框
 struct MeshPreviewView: UIViewRepresentable {
     let mesh: MeshData?
-    var wireframe: Bool = true
+    var style: PreviewStyle = .shaded
 
     func makeUIView(context: Context) -> SCNView {
         let v = SCNView()
@@ -23,7 +24,7 @@ struct MeshPreviewView: UIViewRepresentable {
             return
         }
         let scene = SCNScene()
-        let node = SCNScene.loadMesh(mesh, wireframe: wireframe)
+        let node = SCNScene.loadMesh(mesh, style: style)
         scene.rootNode.addChildNode(node)
 
         let camera = SCNNode()
@@ -44,7 +45,7 @@ extension SCNScene {
     ///
     /// 注意：不走 SCNGeometry(mdlMesh:) —— 那个 ModelIO 桥接构造器 iOS 上不可用。
     /// 这里直接手写顶点源 + 索引元素。
-    static func loadMesh(_ mesh: MeshData, wireframe: Bool) -> SCNNode {
+    static func loadMesh(_ mesh: MeshData, style: PreviewStyle) -> SCNNode {
         let centered = mesh.centered()
         let node = SCNNode()
 
@@ -61,20 +62,101 @@ extension SCNScene {
                                          primitiveCount: centered.faceCount,
                                          bytesPerIndex: 4)
 
-        let geometry = SCNGeometry(sources: [source], elements: [element])
+        var sources: [SCNGeometrySource] = [source]
+
+        // 法线（用于真实色彩模式下的受光）
+        if style != .wireframe {
+            if let normalSource = makeNormalSource(centered) {
+                sources.append(normalSource)
+            }
+        }
+
+        // 顶点色
+        var hasColor = false
+        if style == .shaded, let colors = centered.vertexColors, colors.count == centered.vertexCount {
+            var floats: [Float] = []
+            floats.reserveCapacity(colors.count * 3)
+            for c in colors {
+                floats.append(Float(c.x) / 255)
+                floats.append(Float(c.y) / 255)
+                floats.append(Float(c.z) / 255)
+            }
+            let data = floats.withUnsafeBufferPointer { buf in Data(buffer: buf) }
+            let colorSource = SCNGeometrySource(data: data,
+                                                semantic: .color,
+                                                vectorCount: colors.count,
+                                                floatComponents: true,
+                                                componentsPerVector: 3,
+                                                bytesPerComponent: MemoryLayout<Float>.size,
+                                                dataOffset: 0,
+                                                dataStride: MemoryLayout<Float>.size * 3)
+            sources.append(colorSource)
+            hasColor = true
+        }
+
+        let geometry = SCNGeometry(sources: sources, elements: [element])
 
         let material = SCNMaterial()
         material.lightingModel = .physicallyBased
-        material.diffuse.contents = UIColor(red: 0.21, green: 0.89, blue: 0.76, alpha: 1.0)
-        material.emission.contents = UIColor(red: 0.06, green: 0.22, blue: 0.20, alpha: 1.0)
-        material.roughness.contents = 0.75
-        material.metalness.contents = 0.0
-        material.fillMode = wireframe ? .lines : .fill
         material.isDoubleSided = true
+        material.roughness.contents = 0.72
+        material.metalness.contents = 0.0
+
+        switch style {
+        case .shaded:
+            // 有顶点色时把底色设成白，让顶点色完整呈现
+            if hasColor {
+                material.diffuse.contents = UIColor.white
+                material.emission.contents = UIColor(red: 0.06, green: 0.06, blue: 0.07, alpha: 1.0)
+            } else {
+                material.diffuse.contents = UIColor(red: 0.72, green: 0.74, blue: 0.77, alpha: 1.0)
+                material.emission.contents = UIColor(red: 0.08, green: 0.09, blue: 0.10, alpha: 1.0)
+            }
+            material.fillMode = .fill
+        case .solid:
+            material.diffuse.contents = UIColor(red: 0.78, green: 0.80, blue: 0.83, alpha: 1.0)
+            material.emission.contents = UIColor(red: 0.10, green: 0.11, blue: 0.12, alpha: 1.0)
+            material.fillMode = .fill
+        case .wireframe:
+            material.diffuse.contents = UIColor(red: 0.21, green: 0.89, blue: 0.76, alpha: 1.0)
+            material.emission.contents = UIColor(red: 0.06, green: 0.22, blue: 0.20, alpha: 1.0)
+            material.fillMode = .lines
+        }
         geometry.materials = [material]
 
         node.geometry = geometry
         return node
+    }
+
+    /// 面积加权的顶点法线
+    private static func makeNormalSource(_ mesh: MeshData) -> SCNGeometrySource? {
+        guard mesh.vertexCount > 0 else { return nil }
+        var normals = [SIMD3<Float>](repeating: SIMD3<Float>(0, 0, 0), count: mesh.vertexCount)
+        var i = 0
+        while i + 2 < mesh.indices.count {
+            let ia = mesh.indices[i], ib = mesh.indices[i + 1], ic = mesh.indices[i + 2]
+            let n = mesh.faceNormal(ia, ib, ic)
+            normals[Int(ia)] += n
+            normals[Int(ib)] += n
+            normals[Int(ic)] += n
+            i += 3
+        }
+        var out: [Float] = []
+        out.reserveCapacity(normals.count * 3)
+        for n in normals {
+            let len = simd_length(n)
+            let u = len > 0.00001 ? n / len : SIMD3<Float>(0, 0, 1)
+            out.append(u.x); out.append(u.y); out.append(u.z)
+        }
+        let data = out.withUnsafeBufferPointer { buf in Data(buffer: buf) }
+        return SCNGeometrySource(data: data,
+                                 semantic: .normal,
+                                 vectorCount: normals.count,
+                                 floatComponents: true,
+                                 componentsPerVector: 3,
+                                 bytesPerComponent: MemoryLayout<Float>.size,
+                                 dataOffset: 0,
+                                 dataStride: MemoryLayout<Float>.size * 3)
     }
 }
 
@@ -83,6 +165,7 @@ struct EditView: View {
     @EnvironmentObject private var app: AppModel
     @State private var showSaveDialog = false
     @State private var saveName = ""
+    @State private var previewStyle: PreviewStyle = .shaded
 
     private var mesh: MeshData? { app.mesh }
 
@@ -118,7 +201,7 @@ struct EditView: View {
                         .fill(Theme.card)
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .stroke(Theme.stroke, lineWidth: 1)
-                    MeshPreviewView(mesh: mesh, wireframe: true)
+                    MeshPreviewView(mesh: mesh, style: previewStyle)
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
                     // 角标数据
@@ -150,6 +233,20 @@ struct EditView: View {
                 .frame(height: 300)
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
+
+                // 预览样式
+                VStack(alignment: .leading, spacing: 8) {
+                    SectionHeader(title: "预览样式")
+                    SegmentedControl(options: PreviewStyle.allCases.map { $0.rawValue },
+                                     selection: Binding(
+                                        get: { PreviewStyle.allCases.firstIndex(of: previewStyle) ?? 0 },
+                                        set: { previewStyle = PreviewStyle.allCases[$0] }))
+                    Text(styleHint)
+                        .font(.system(size: 11))
+                        .foregroundColor(Theme.text3)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 10)
 
                 // 工具 chips
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -215,6 +312,17 @@ struct EditView: View {
             Button("取消", role: .cancel) { }
         } message: {
             Text("模型将以 OBJ 格式存入本地模型库。")
+        }
+    }
+
+    private var styleHint: String {
+        switch previewStyle {
+        case .shaded:
+            let hasColor = (app.mesh?.vertexColors?.count ?? 0) > 0
+            return hasColor ? "扫描时的真实颜色，可双指旋转、单指平移查看"
+                            : "当前模型没有颜色数据，显示的是灰白实体"
+        case .solid:    return "统一灰白实体，便于观察形体与破面"
+        case .wireframe: return "线框模式，用于检查网格拓扑与密度"
         }
     }
 

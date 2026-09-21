@@ -17,11 +17,8 @@ struct ScanView: View {
     @State private var paused = false
     @State private var hintIndex = 0
 
-    private let hints = [
-        "缓慢环绕物体移动，保持 0.3–0.8m 距离",
-        "从低位补扫底部边缘，避免出现破面",
-        "纹理不足的白色表面请适当贴近补扫"
-    ]
+    /// 提示语随模式变化
+    private var currentHints: [String] { app.mode.hints }
 
     private var session: ARSessionManager { app.session }
 
@@ -65,15 +62,14 @@ struct ScanView: View {
     private var topBar: some View {
         VStack(spacing: 12) {
             HStack {
-                // 融合芯片
+                // 模式芯片
                 HStack(spacing: 6) {
-                    Circle()
-                        .fill(Theme.accent)
-                        .frame(width: 6, height: 6)
-                    Text(session.usingLiDAR ? "LiDAR + RGB 融合" : "RGB 单目模式")
+                    Image(systemName: app.mode.icon)
+                        .font(.system(size: 11, weight: .semibold))
+                    Text("\(app.mode.rawValue) · \(app.mode.radiusText)")
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(Theme.text)
                 }
+                .foregroundColor(session.usingLiDAR ? Theme.accent : Theme.warn)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .background(Color.black.opacity(0.55))
@@ -91,8 +87,17 @@ struct ScanView: View {
                     .clipShape(Capsule())
             }
 
-            // 引导胶囊 / 零网格自检提示
-            if session.noMeshWarning {
+            // 物体模式：焦点还没锁定时先提示对准
+            if app.mode.usesFocusCrop && !session.focusLocked {
+                Text("对准物体、站定约 1 秒，锁定焦点后开始环绕")
+                    .font(.system(size: 12))
+                    .foregroundColor(Theme.warn)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(Color.black.opacity(0.5))
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(Theme.warn.opacity(0.45), lineWidth: 1))
+            } else if session.noMeshWarning {
                 Text(session.usingLiDAR
                      ? "还没采到网格：请缓慢平移手机，避免纯白或纯黑表面"
                      : "此设备不支持 LiDAR 网格重建，无法生成扫描网格")
@@ -104,7 +109,7 @@ struct ScanView: View {
                     .clipShape(Capsule())
                     .overlay(Capsule().stroke(Theme.warn.opacity(0.45), lineWidth: 1))
             } else {
-                Text(hints[hintIndex % hints.count])
+                Text(currentHints[hintIndex % currentHints.count])
                     .font(.system(size: 12))
                     .foregroundColor(Theme.text2)
                     .padding(.horizontal, 12)

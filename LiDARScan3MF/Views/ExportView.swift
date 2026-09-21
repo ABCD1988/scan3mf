@@ -6,6 +6,7 @@ struct ExportView: View {
     @State private var format: ExportFormat = .threeMF
     @State private var scale: ExportScale = .one
     @State private var unit: ExportUnit = .mm
+    @State private var style: ExportStyle = .textured
     @State private var shareURL: URL?
 
     private let formatNotes: [ExportFormat: String] = [
@@ -14,6 +15,11 @@ struct ExportView: View {
         .obj: "兼容性广，可带顶点色，适合后续建模",
         .usdz: "苹果原生 AR 格式，可用于「快速查看」"
     ]
+
+    /// 该格式是否支持写入颜色
+    private func supportsColor(_ f: ExportFormat) -> Bool {
+        f == .threeMF || f == .obj
+    }
 
     var body: some View {
         ZStack {
@@ -26,6 +32,7 @@ struct ExportView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 12) {
                         summaryCard
+                        styleSection
                         formatSection
                         optionSection
                         detailEntry
@@ -81,6 +88,93 @@ struct ExportView: View {
                       abs(s.x * 1000 * scale.factor),
                       abs(s.y * 1000 * scale.factor),
                       abs(s.z * 1000 * scale.factor))
+    }
+
+    // MARK: - 导出样式
+
+    private var styleSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SectionHeader(title: "导出样式")
+            VStack(spacing: 0) {
+                ForEach(Array(ExportStyle.allCases.enumerated()), id: \.offset) { idx, s in
+                    styleRow(s)
+                    if idx < ExportStyle.allCases.count - 1 {
+                        Divider().background(Theme.stroke).padding(.leading, 44)
+                    }
+                }
+            }
+            .background(Theme.card)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(style == .textured ? Theme.accent.opacity(0.5) : Theme.stroke, lineWidth: 1))
+
+            Text(styleFootnote)
+                .font(.system(size: 11))
+                .foregroundColor(Theme.text3)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var styleFootnote: String {
+        if supportsColor(format) {
+            return "「真实色彩」用 3MF/OBJ 的颜色扩展写入，切片器与建模软件里能看到彩色模型。"
+        }
+        return "\(format.rawValue) 格式不带颜色信息，样式设置对其无效，将按纯几何导出。"
+    }
+
+    private func styleRow(_ s: ExportStyle) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                Circle()
+                    .stroke(style == s ? Theme.accent : Theme.stroke, lineWidth: 1.5)
+                    .frame(width: 18, height: 18)
+                if style == s {
+                    Circle().fill(Theme.accent).frame(width: 9, height: 9)
+                }
+            }
+            .padding(.top, 1)
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(s.rawValue)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(supportsColor(format) ? Theme.text : Theme.text3)
+                    if s == .textured {
+                        Text("推荐")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(Theme.bg)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Theme.accent)
+                            .clipShape(Capsule())
+                    }
+                }
+                Text(s.note)
+                    .font(.system(size: 11))
+                    .foregroundColor(Theme.text3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+
+            // 色块示意
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(swatch(s))
+                .frame(width: 22, height: 22)
+                .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .stroke(Theme.stroke, lineWidth: 1))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .contentShape(Rectangle())
+        .onTapGesture { style = s }
+    }
+
+    private func swatch(_ s: ExportStyle) -> Color {
+        switch s {
+        case .textured: return Color(hex: 0xB9A48C)
+        case .plain:    return Color(hex: 0xC7CBD1)
+        case .accent:   return Theme.accent
+        }
     }
 
     // MARK: - 格式选择
@@ -215,7 +309,7 @@ struct ExportView: View {
     private var actions: some View {
         VStack(spacing: 10) {
             Button {
-                if let url = app.exportMesh(format: format, scale: scale, unit: unit) {
+                if let url = app.exportMesh(format: format, scale: scale, unit: unit, style: style) {
                     shareURL = url
                 }
             } label: {

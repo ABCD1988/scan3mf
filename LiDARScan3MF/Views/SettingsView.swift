@@ -39,10 +39,10 @@ struct SettingsView: View {
                 .padding(.bottom, 8)
             }
         }
-        .alert("关于 LiDARScan3MF", isPresented: $showAbout) {
+        .alert("关于 \(AppInfo.name)", isPresented: $showAbout) {
             Button("好", role: .cancel) { }
         } message: {
-            Text("LiDAR 实扫建模工具，支持导出 3MF / STL / OBJ / USDZ。\n版本 \(Self.version)")
+            Text("作者：\(AppInfo.author)\n\nLiDAR 实扫建模工具，支持物体扫描与空间扫描，可导出 3MF / STL / OBJ / USDZ。\n版本 \(Self.version)")
         }
     }
 
@@ -135,6 +135,8 @@ struct SettingsView: View {
                         .font(Theme.data)
                         .foregroundColor(Theme.text3)
                 }
+                Divider().background(Theme.stroke)
+                infoRow("作者", value: AppInfo.author, ok: true)
                 Divider().background(Theme.stroke)
                 Button {
                     showAbout = true

@@ -29,6 +29,7 @@
 		1A0020000000000000000000 /* DetailSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0020000000000000000000; };
 		1A0021000000000000000000 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0021000000000000000000; };
 		1A0022000000000000000000 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2A0022000000000000000000; };
+		1A0023000000000000000000 /* ScanMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0024000000000000000000; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -54,6 +55,7 @@
 		2A0020000000000000000000 /* DetailSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailSettingsView.swift; sourceTree = "<group>"; };
 		2A0021000000000000000000 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		2A0022000000000000000000 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		2A0024000000000000000000 /* ScanMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanMode.swift; sourceTree = "<group>"; };
 		2A0023000000000000000000 /* LiDARScan3MF.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LiDARScan3MF.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -96,6 +98,7 @@
 				2A0001000000000000000000 /* LiDARScan3MFApp.swift */,
 				2A0002000000000000000000 /* Theme.swift */,
 				2A0003000000000000000000 /* AppModel.swift */,
+				2A0024000000000000000000 /* ScanMode.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -252,6 +255,7 @@
 				1A0019000000000000000000 /* ExportView.swift in Sources */,
 				1A0020000000000000000000 /* DetailSettingsView.swift in Sources */,
 				1A0021000000000000000000 /* SettingsView.swift in Sources */,
+				1A0023000000000000000000 /* ScanMode.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

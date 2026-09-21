@@ -182,6 +182,22 @@ enum MeshProcessor {
             let cIndex = UInt32(out.vertices.count)
             out.vertices.append(centroid)
 
+            // 有颜色时给质心补一个环上的平均色，保持颜色数组与顶点数一致
+            if var cols = out.vertexColors {
+                var sr: Float = 0, sg: Float = 0, sb: Float = 0
+                for vid in loop where Int(vid) < cols.count {
+                    sr += Float(cols[Int(vid)].x)
+                    sg += Float(cols[Int(vid)].y)
+                    sb += Float(cols[Int(vid)].z)
+                }
+                let n = Float(max(1, loop.count))
+                let r = UInt8(min(255, max(0, sr / n)))
+                let g = UInt8(min(255, max(0, sg / n)))
+                let b = UInt8(min(255, max(0, sb / n)))
+                cols.append(SIMD3<UInt8>(r, g, b))
+                out.vertexColors = cols
+            }
+
             // 扇形三角化
             for n in 0..<loop.count {
                 let a = loop[n]
@@ -227,8 +243,11 @@ enum MeshProcessor {
         var out = MeshData()
         // 累加同格子内的顶点求平均
         var accum: [SIMD3<Int32>: (sum: SIMD3<Float>, count: Float)] = [:]
+        // 颜色也要跟着一起平均，否则简化后模型会掉色
+        var accumColor: [SIMD3<Int32>: (sum: SIMD3<Float>, count: Float)] = [:]
+        let srcColors = mesh.vertexColors
 
-        for v in mesh.vertices {
+        for (vi, v) in mesh.vertices.enumerated() {
             let cell = SIMD3<Int32>(Int32(floor((v.x - lo.x) / cellSize)),
                                     Int32(floor((v.y - lo.y) / cellSize)),
                                     Int32(floor((v.z - lo.z) / cellSize)))
@@ -242,6 +261,12 @@ enum MeshProcessor {
                 accum[cell] = (v, 1)
                 out.vertices.append(v)   // 占位，稍后平均
             }
+            if let cs = srcColors, vi < cs.count {
+                let c = cs[vi]
+                let fv = SIMD3<Float>(Float(c.x), Float(c.y), Float(c.z))
+                let prev = accumColor[cell] ?? (SIMD3<Float>(0, 0, 0), 0)
+                accumColor[cell] = (prev.sum + fv, prev.count + 1)
+            }
             newVertexIndex.append(cellToNew[cell] ?? 0)
         }
 
@@ -250,6 +275,21 @@ enum MeshProcessor {
             if let a = accum[cell], a.count > 0 {
                 out.vertices[Int(idx)] = a.sum / a.count
             }
+        }
+
+        // 回填平均色
+        if srcColors != nil {
+            var cols = [SIMD3<UInt8>](repeating: SIMD3<UInt8>(150, 150, 150), count: out.vertices.count)
+            for (cell, idx) in cellToNew {
+                guard let a = accumColor[cell], a.count > 0 else { continue }
+                let i = Int(idx)
+                guard i < cols.count else { continue }
+                let r = UInt8(min(255, max(0, (a.sum.x / a.count).rounded())))
+                let g = UInt8(min(255, max(0, (a.sum.y / a.count).rounded())))
+                let b = UInt8(min(255, max(0, (a.sum.z / a.count).rounded())))
+                cols[i] = SIMD3<UInt8>(r, g, b)
+            }
+            out.vertexColors = cols
         }
 
         // 重建索引，去重三角形

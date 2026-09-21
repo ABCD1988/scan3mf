@@ -19,7 +19,7 @@ struct HomeView: View {
                         Text("模型库")
                             .font(.system(size: 26, weight: .bold))
                             .foregroundColor(Theme.text)
-                        Text("LiDAR 扫描建模 · 3MF 导出")
+                        Text("LiDAR 扫描建模 · 3MF 导出 · by \(AppInfo.author)")
                             .font(.system(size: 12))
                             .foregroundColor(Theme.text3)
                     }
@@ -45,6 +45,7 @@ struct HomeView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 12) {
+                        modeCard
                         storageCard
                         modelGrid
                         Color.clear.frame(height: 8)
@@ -73,6 +74,52 @@ struct HomeView: View {
             app.toast = "已删除 \(model.name)"
             pendingDelete = nil
         }
+    }
+
+    // MARK: - 扫描模式
+
+    private var modeCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(title: "扫描模式")
+            HStack(spacing: 10) {
+                ForEach(ScanMode.allCases) { m in
+                    modeButton(m)
+                }
+            }
+            Text(app.mode.detail)
+                .font(.system(size: 11))
+                .foregroundColor(Theme.text3)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func modeButton(_ m: ScanMode) -> some View {
+        let selected = app.mode == m
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: m.icon)
+                    .font(.system(size: 12, weight: .semibold))
+                Text(m.rawValue)
+                    .font(.system(size: 13, weight: .semibold))
+            }
+            .foregroundColor(selected ? Theme.accent : Theme.text)
+
+            Text(m.subtitle)
+                .font(.system(size: 10))
+                .foregroundColor(Theme.text3)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text("采集半径 \(m.radiusText)")
+                .font(Theme.data)
+                .foregroundColor(selected ? Theme.accent : Theme.text3)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(selected ? Theme.accent.opacity(0.10) : Theme.card)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .stroke(selected ? Theme.accent.opacity(0.6) : Theme.stroke, lineWidth: 1))
+        .onTapGesture { app.selectMode(m) }
     }
 
     // MARK: - 存储卡
@@ -185,12 +232,12 @@ struct HomeView: View {
 
     private var scanButton: some View {
         Button {
-            app.startScan()
+            app.startScan(mode: app.mode)
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "viewfinder")
                     .font(.system(size: 15, weight: .semibold))
-                Text("开始新扫描")
+                Text("开始\(app.mode.rawValue)")
                     .font(.system(size: 15, weight: .semibold))
             }
             .foregroundColor(Theme.bg)
