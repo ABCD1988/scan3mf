@@ -46,7 +46,8 @@ enum TextureBaker {
         var cPtr: UnsafePointer<UInt8>? = nil
         var bprC: Int = 0
         if planeCount >= 2, let baseC = CVPixelBufferGetBaseAddressOfPlane(pb, 1) {
-            cPtr = baseC.assumingMemoryBound(to: UInt8.self)
+            // UnsafeMutablePointer → UnsafePointer 要显式构造，不能隐式转换
+            cPtr = UnsafePointer<UInt8>(baseC.assumingMemoryBound(to: UInt8.self))
             bprC = CVPixelBufferGetBytesPerRowOfPlane(pb, 1)
         }
 
